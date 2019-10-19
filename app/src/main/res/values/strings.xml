@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">SDL車両データ表示サンプル</string>
+    <string name="title_activity_shop">ShopActivity</string>
+    <string name="title_home">Home</string>
+    <string name="title_dashboard">Dashboard</string>
+    <string name="title_notifications">Notifications</string>
+    <string name="btn">ボタン４ショップ</string>
 </resources>

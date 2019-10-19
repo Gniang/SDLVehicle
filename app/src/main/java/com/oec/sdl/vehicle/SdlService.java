@@ -57,8 +57,8 @@ public class SdlService extends Service {
 	// TCP/IP transport config
 	// The default port is 12345
 	// The IP is of the machine that is running SDL Core
-	private static final int TCP_PORT = 12345;
-	private static final String DEV_MACHINE_IP_ADDRESS = "127.0.0.1";
+	private static final int TCP_PORT = 14626;
+	private static final String DEV_MACHINE_IP_ADDRESS = "m.sdl.tools";
 
 	// variable to create and call functions of the SyncProxy
 	private SdlManager sdlManager = null;
@@ -196,8 +196,10 @@ public class SdlService extends Service {
                             }
 
                             //テキストを登録する場合
-                            sdlManager.getScreenManager().setTextField1("RPM: " + onVehicleDataNotification.getRpm());
+							String rpmStr = "RPM: " + onVehicleDataNotification.getRpm();
+                            sdlManager.getScreenManager().setTextField1(rpmStr);
 
+							sendBroadCast(rpmStr);
 
                             PRNDL prndl = onVehicleDataNotification.getPrndl();
                             if (prndl != null) {
@@ -261,6 +263,16 @@ public class SdlService extends Service {
 
 
 		}
+	}
+
+
+	protected void sendBroadCast(String message) {
+
+		Intent broadcastIntent = new Intent();
+		broadcastIntent.putExtra("message", message);
+		broadcastIntent.setAction("UPDATE_ACTION");
+		getBaseContext().sendBroadcast(broadcastIntent);
+
 	}
 
     /**

@@ -15,6 +15,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.google.gson.Gson;
+
 public class MainActivity extends AppCompatActivity {
 
     private int soundNoTouch;
@@ -71,14 +73,6 @@ public class MainActivity extends AppCompatActivity {
             registerReceiver(upReceiver, intentFilter);
         }
 
-        // ロック解除時
-        {
-            final IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
-            filter.addAction(Intent.ACTION_USER_PRESENT);
-            registerReceiver(new PhoneUnlockedReceiver(), filter);
-        }
-
-
 
         //If we are connected to a module we want to start our SdlService
         if(BuildConfig.TRANSPORT.equals("MULTI") || BuildConfig.TRANSPORT.equals("MULTI_HB")) {
@@ -105,24 +99,29 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent){
             Bundle extras = intent.getExtras();
+
+            // debug
             String msg = extras.getString("message");
-            ((TextView)findViewById(R.id.dbgText)).setText(msg);
-        }
-    }
-
-
-    public class PhoneUnlockedReceiver extends BroadcastReceiver {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent.getAction().equals(Intent.ACTION_USER_PRESENT)){
-                Log.d("debug", "Phone unlocked");
-                // one.wav の再生
-                // play(ロードしたID, 左音量, 右音量, 優先度, ループ,再生速度)
-                soundPool.play(soundNoTouch, 1.0f, 1.0f, 0, 0, 1);
-            }else if (intent.getAction().equals(Intent.ACTION_SCREEN_OFF)){
-                Log.d("debug", "Phone locked");
+            if(msg != null){
+                if("unlock".equals(msg)){
+                    // play(ロードしたID, 左音量, 右音量, 優先度, ループ,再生速度)
+                    soundPool.play(soundNoTouch, 1.0f, 1.0f, 0, 0, 1);
+                }
+                else
+                {
+                    ((TextView)findViewById(R.id.dbgText)).setText(msg);
+                }
             }
+
+            String json = extras.getString("json");
+            if(json != null){
+                ResultData result = new Gson().fromJson(json, ResultData.class);
+                ((TextView)findViewById(R.id.dbgText)).setText(result.getTotalScore());
+            }
+
         }
     }
+
+
+
 }

@@ -1,4 +1,6 @@
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-android'
 
 android {
     compileSdkVersion 28
@@ -61,4 +63,11 @@ dependencies {
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 
     implementation 'com.smartdevicelink:sdl_android:4.9.1'
+    implementation 'com.google.code.gson:gson:2.8.6'
+    compile "android.arch.navigation:navigation-ui-ktx:1.0.0"
+    compile "android.arch.navigation:navigation-fragment-ktx:1.0.0"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+}
+repositories {
+    mavenCentral()
 }

@@ -75,7 +75,6 @@ public class SdlService : Service() {
     private var sdlManager: SdlManager? = null
 
 
-
     // 走行結果
     private var resultData = ResultData()
     // パーキングブレーキ状態
@@ -234,6 +233,12 @@ public class SdlService : Service() {
                             if(newPark != null){
                                 Log.i(TAG, "ParkBreak:$newPark")
                                 if (parkBraak != newPark && newPark == ElectronicParkBrakeStatus.CLOSED) {
+
+                                    // 画面表示
+                                    val intent = Intent(serviceContext(), ResulActivity::class.java)
+                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    application.startActivity(intent)
+
                                     sendBroadCast("json", Gson().toJson(resultData))
                                     resultData = CreateNewResultData(resultData)
                                     Log.i(TAG, "sendResultScore")
@@ -296,6 +301,10 @@ public class SdlService : Service() {
 
 
         }
+    }
+
+    private fun serviceContext():Context{
+        return this;
     }
 
     private fun CreateNewResultData(resultData: ResultData): ResultData {
@@ -496,7 +505,7 @@ public class SdlService : Service() {
         // TCP/IP transport config
         // The default port is 12345
         // The IP is of the machine that is running SDL Core
-        private val TCP_PORT = 10988
+        private val TCP_PORT = 19597
         private val DEV_MACHINE_IP_ADDRESS = "m.sdl.tools"
 
         @JvmField val totalData:TotalData = TotalData()

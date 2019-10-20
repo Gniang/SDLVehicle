@@ -112,6 +112,7 @@ public class MainActivity extends AppCompatActivity {
                     ((TextView)findViewById(R.id.dbgText)).setText(msg);
                 }
             }
+
         }
     }
 

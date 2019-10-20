@@ -90,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
         sendButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
             Intent intent = new Intent(getApplication(), ShopActivity.class);
-                startActivity(intent);
+            startActivity(intent);
             }
         });
     }
@@ -112,18 +112,6 @@ public class MainActivity extends AppCompatActivity {
                     ((TextView)findViewById(R.id.dbgText)).setText(msg);
                 }
             }
-
-            String json = extras.getString("json");
-            if(json != null){
-                ResultData result = new Gson().fromJson(json, ResultData.class);
-                int score = result.getTotalScore();
-                if(score > 0){
-                    ((TextView)findViewById(R.id.dbgText)).setText(Integer.toString(score) + "ポイント");
-                }
-
-                Log.i("debug", json);
-            }
-
         }
     }
 

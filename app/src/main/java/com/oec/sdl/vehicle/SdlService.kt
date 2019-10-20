@@ -48,7 +48,7 @@ import java.util.ArrayList
 import java.util.Vector
 
 @RequiresApi(api = Build.VERSION_CODES.O)
-class SdlService : Service() {
+public class SdlService : Service() {
 
     inner class PhoneUnlockedReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -73,6 +73,7 @@ class SdlService : Service() {
 
     // variable to create and call functions of the SyncProxy
     private var sdlManager: SdlManager? = null
+
 
 
     // 走行結果
@@ -481,7 +482,7 @@ class SdlService : Service() {
         }
     }
 
-    companion object {
+    public companion object {
 
         private val TAG = "SDL Service"
 
@@ -495,8 +496,11 @@ class SdlService : Service() {
         // TCP/IP transport config
         // The default port is 12345
         // The IP is of the machine that is running SDL Core
-        private val TCP_PORT = 15297
+        private val TCP_PORT = 10988
         private val DEV_MACHINE_IP_ADDRESS = "m.sdl.tools"
+
+        @JvmField val totalData:TotalData = TotalData()
+
     }
 
 }

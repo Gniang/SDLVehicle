@@ -42,6 +42,7 @@ import com.smartdevicelink.transport.MultiplexTransportConfig
 import com.smartdevicelink.transport.TCPTransportConfig
 
 import java.time.Duration
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.ArrayList
 import java.util.Vector
@@ -52,12 +53,21 @@ class SdlService : Service() {
     inner class PhoneUnlockedReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == Intent.ACTION_USER_PRESENT) {
-                sendBroadCast("message", "unlock")
+
+                // パーキングブレーキが入っていないときは操作を通知
+                if(parkBraak != ElectronicParkBrakeStatus.CLOSED){
+                    addPenalty(0.05, true)
+                    sendBroadCast("message", "unlock")
+                }
+                Log.i("debug", "Unlocked")
+
             } else if (intent.action == Intent.ACTION_SCREEN_OFF) {
                 Log.d("debug", "Screen OFF")
             }
         }
     }
+
+    private lateinit var listener: SdlManagerListener
 
     private val penaltyTimeSec = 10L;
 
@@ -85,7 +95,6 @@ class SdlService : Service() {
         }
 
         // ロック解除時
-
         val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
         filter.addAction(Intent.ACTION_USER_PRESENT)
         registerReceiver(PhoneUnlockedReceiver(), filter)
@@ -156,11 +165,10 @@ class SdlService : Service() {
             val appType = Vector<AppHMIType>()
             appType.add(AppHMIType.MEDIA)
 
-
             // The manager listener helps you know when certain events that pertain to the SDL Manager happen
             // Here we will listen for ON_HMI_STATUS and ON_COMMAND notifications
             val listener = object : SdlManagerListener {
-                private val beforePrndl: PRNDL? = null
+                private var beforePrndl: PRNDL? = null
                 override fun onStart() {
                     // HMI Status Listener
                     sdlManager!!.addOnRPCNotificationListener(FunctionID.ON_HMI_STATUS, object : OnRPCNotificationListener() {
@@ -183,90 +191,78 @@ class SdlService : Service() {
                         override fun onNotified(notification: RPCNotification) {
                             val onVehicleDataNotification = notification as OnVehicleData
 
-                            // スクリーンの描画開始
                             sdlManager!!.screenManager.beginTransaction()
 
-                            // Rpm表示
-                            ShowRpm(onVehicleDataNotification)
+                            var artwork: SdlArtwork? = null
+
+                            //回転数が3000以上か、以下で画像を切り替える
+                            val rpm = onVehicleDataNotification.rpm
+                            if (rpm != null) {
+                                if (rpm > 3000) {
+                                    if (sdlManager!!.screenManager.primaryGraphic.resourceId != R.drawable.oldman) {
+                                        artwork = SdlArtwork("oldman.png", FileType.GRAPHIC_PNG, R.drawable.oldman, true)
+                                    }
+                                } else {
+                                    if (sdlManager!!.screenManager.primaryGraphic.resourceId != R.drawable.oldman) {
+                                        artwork = SdlArtwork("clap.png", FileType.GRAPHIC_PNG, R.drawable.clap, true)
+                                    }
+                                }
+                                if (artwork != null) {
+                                    sdlManager!!.screenManager.primaryGraphic = artwork
+                                }
+                            }
+
                             //テキストを登録する場合
-                            val rpmStr = "RPM: " + onVehicleDataNotification.rpm!!
-                            sdlManager!!.screenManager.textField1 = rpmStr
-                            // 画面にデータ送信(サンプル）
-                            sendBroadCast("message", rpmStr)
+                            sdlManager!!.screenManager.textField1 = "RPM: " + onVehicleDataNotification.rpm
+
+
+                            val prndl = onVehicleDataNotification.prndl
+                            if (prndl != null) {
+                                sdlManager!!.screenManager.textField2 = "ParkBrake: $prndl"
+
+                                //パーキングブレーキの状態が変わった時だけSpeedを受信させる
+                                if (beforePrndl != prndl) {
+                                    beforePrndl = prndl
+                                    setOnTimeSpeedResponse()
+                                }
+                            }
+
 
                             // パーキングブレーキがはいると走行結果を画面に通達する。
                             val newPark = onVehicleDataNotification.electronicParkBrakeStatus
-                            if (parkBraak != newPark && newPark == ElectronicParkBrakeStatus.CLOSED) {
-                                sendBroadCast("result", Gson().toJson(resultData))
-                                resultData = ResultData()
+                            if(newPark != null){
+                                Log.i(TAG, "ParkBreak:$newPark")
+                                if (parkBraak != newPark && newPark == ElectronicParkBrakeStatus.CLOSED) {
+                                    sendBroadCast("json", Gson().toJson(resultData))
+                                    resultData = CreateNewResultData(resultData)
+                                    Log.i(TAG, "sendResultScore")
+                                }
+                                parkBraak = newPark
                             }
-                            parkBraak = newPark
 
                             // スコア計算
-                            CalcScore(onVehicleDataNotification)
+                            var speed = onVehicleDataNotification.speed
+                            if(speed != null){
+                                Log.i(TAG, "Speed:$speed")
 
-                            // スクリーンを描画する
+                                CalcScore(speed);
+                            }
+
                             sdlManager!!.screenManager.commit { success ->
                                 if (success) {
                                     Log.i(TAG, "change successful")
                                 }
                             }
-
                         }
-
                     })
                 }
 
-                //
-                private fun CalcScore(onVehicleDataNotification: OnVehicleData) {
-                    val newDate = LocalDateTime.now()
-                    // 不要になったペナルティを削除
-                    resultData.BadStatus.removeIf { x-> x.Start.plusSeconds(penaltyTimeSec) < newDate}
-                    val d = Duration.between(newDate, prevDate)
-
-
-                    val totalHour = d.seconds / (60.0 * 60.0)
-                    val kph = onVehicleDataNotification.speed!!.toDouble()
-                    val distanceMeter = kph * totalHour * 1000.0
-
-                    // 乗算ペナルティ係数を求める
-                    val badStatus : Double = resultData.BadStatus
-                            .stream()
-                            .mapToDouble { x -> x.Keisu}
-                            .reduce { x,y -> (x * y)}?.asDouble ?: 1.0
-
-                    // スコア設定
-                    resultData.Scores.add((distanceMeter * badStatus).toInt());
-                    resultData.Times.add(newDate)
-                    prevDate = newDate
-                }
-
-
-                //回転数が3000以上か、以下で画像を切り替える
-                private fun ShowRpm(onVehicleDataNotification: OnVehicleData) {
-                    var artwork: SdlArtwork? = null
-                    val rpm = onVehicleDataNotification.rpm
-                    if (rpm != null) {
-                        if (rpm > 3000) {
-                            if (sdlManager!!.screenManager.primaryGraphic.resourceId != R.drawable.oldman) {
-                                artwork = SdlArtwork("oldman.png", FileType.GRAPHIC_PNG, R.drawable.oldman, true)
-                            }
-                        } else {
-                            if (sdlManager!!.screenManager.primaryGraphic.resourceId != R.drawable.oldman) {
-                                artwork = SdlArtwork("clap.png", FileType.GRAPHIC_PNG, R.drawable.clap, true)
-                            }
-                        }
-                        if (artwork != null) {
-                            sdlManager!!.screenManager.primaryGraphic = artwork
-                        }
-                    }
-
-                }
 
                 override fun onDestroy() {
                     val unsubscribeRequest = UnsubscribeVehicleData()
                     unsubscribeRequest.rpm = true
                     unsubscribeRequest.prndl = true
+                    unsubscribeRequest.speed = true
                     unsubscribeRequest.electronicParkBrakeStatus = true    //パーキングブレーキの状態
                     unsubscribeRequest.onRPCResponseListener = object : OnRPCResponseListener() {
                         override fun onResponse(correlationId: Int, response: RPCResponse) {
@@ -301,9 +297,69 @@ class SdlService : Service() {
         }
     }
 
+    private fun CreateNewResultData(resultData: ResultData): ResultData {
+        val now = LocalDateTime.now();
+        val newData = ResultData()
+        // ペナの引継ぎ
+        newData.BadStatus.addAll(
+                resultData.BadStatus.filter { x -> x.Start > now  }
+        )
+        return  newData
+    }
+
+    // ポイント計算
+    private fun CalcScore(speedKph:Double) {
+        val newDate = LocalDateTime.now()
+        val d = Duration.between(prevDate, newDate)
+
+
+        val totalHour = d.seconds / (60.0 * 60.0)
+        val distanceMeter = speedKph * totalHour * 1000.0
+
+        // 乗算ペナルティ係数を求める
+        val badStsCount = resultData.BadStatus
+                .stream()
+                .filter{x->x.Start > prevDate}
+                .count()
+
+        var penalty = 1.0
+        if(badStsCount > 0){
+            penalty = resultData.BadStatus
+                    .stream()
+                    .filter{x->x.Start > prevDate}
+                    .map { x -> x.Keisu}
+                    .reduce { x,y -> (x * y)}.get()
+        }
+
+        Log.i(TAG, "BadStatus:$penalty    count:$badStsCount"  )
+
+        // スコア設定
+        resultData.Scores.add((distanceMeter * penalty).toInt());
+        resultData.Times.add(newDate)
+        prevDate = newDate
+    }
+
+    // ペナ付与
+    private fun addPenalty(penalty:Double, isFaital:Boolean) {
+
+        var last:LocalDateTime = LocalDateTime.now()
+        var badStCnt = resultData.BadStatus
+                .stream()
+                .filter{x->x.IsFaital}
+                .count()
+        if(isFaital && badStCnt > 0){
+            last =  resultData.BadStatus
+                    .stream()
+                    .filter{x->x.IsFaital}.map {x->x.Start  }
+                    .max{x,y-> x.compareTo(y) }.get();
+        }
+
+        resultData.BadStatus.add(
+                BadStatus(last.plusSeconds(penaltyTimeSec), penalty, isFaital)
+        )
+    }
 
     protected fun sendBroadCast(key: String, message: String) {
-
         val broadcastIntent = Intent()
         broadcastIntent.putExtra(key, message)
         broadcastIntent.action = "UPDATE_ACTION"
@@ -408,6 +464,7 @@ class SdlService : Service() {
                 val subscribeRequest = SubscribeVehicleData()
                 subscribeRequest.rpm = true                          //エンジン回転数
                 subscribeRequest.prndl = true                        //シフトレーバの状態
+                subscribeRequest.speed = true
                 subscribeRequest.electronicParkBrakeStatus = true    //パーキングブレーキの状態
                 subscribeRequest.onRPCResponseListener = object : OnRPCResponseListener() {
                     override fun onResponse(correlationId: Int, response: RPCResponse) {
@@ -438,7 +495,7 @@ class SdlService : Service() {
         // TCP/IP transport config
         // The default port is 12345
         // The IP is of the machine that is running SDL Core
-        private val TCP_PORT = 14626
+        private val TCP_PORT = 15297
         private val DEV_MACHINE_IP_ADDRESS = "m.sdl.tools"
     }
 

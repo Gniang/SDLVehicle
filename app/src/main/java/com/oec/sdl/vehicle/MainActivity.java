@@ -6,23 +6,31 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioAttributes;
 import android.media.SoundPool;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.view.MotionEvent;
 
 import com.google.gson.Gson;
+
+import org.json.JSONObject;
 
 public class MainActivity extends AppCompatActivity {
 
     private int soundNoTouch;
     private SoundPool soundPool;
     private int soundBreak;
+    private int soundNyaa;
+    private int ohayou;
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -53,8 +61,10 @@ public class MainActivity extends AppCompatActivity {
             soundNoTouch = soundPool.load(this, R.raw.notouch, 1);
 
             // two.wav をロードしておく
-            //soundBreak = soundPool.load(this, R.raw.two, 1);
-
+            soundNyaa = soundPool.load(this, R.raw.nyaa, 1);
+            
+            ohayou = soundPool.load(this, R.raw.oyahyou, 1);
+            
             // load が終わったか確認する場合
             soundPool.setOnLoadCompleteListener(new SoundPool.OnLoadCompleteListener() {
                 @Override
@@ -85,6 +95,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
+        ((TextView)findViewById(R.id.lbl5)).setText(Integer.toString(SdlService.totalData.getPoint()));
 
         Button sendButton = findViewById(R.id.btn3);
         sendButton.setOnClickListener(new View.OnClickListener() {
@@ -95,7 +106,17 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public boolean onTouchEvent(MotionEvent event) {
+        Log.d("TouchEvent", "X:" + event.getX() + ",Y:" + event.getY());
+        soundPool.play(soundNyaa, 1.0f, 1.0f, 0, 0, 1);
+        ((TextView)findViewById(R.id.lbl5)).setText(Integer.toString(SdlService.totalData.getPoint()));
+        return true;
+    }
     protected class UpdateReceiver extends BroadcastReceiver {
+        @RequiresApi(api = Build.VERSION_CODES.O)
         @Override
         public void onReceive(Context context, Intent intent){
             Bundle extras = intent.getExtras();
@@ -112,6 +133,8 @@ public class MainActivity extends AppCompatActivity {
                     ((TextView)findViewById(R.id.dbgText)).setText(msg);
                 }
             }
+
+            ((TextView)findViewById(R.id.lbl5)).setText(Integer.toString(SdlService.totalData.getPoint()));
 
         }
     }

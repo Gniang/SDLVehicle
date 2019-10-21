@@ -20,18 +20,22 @@ public class ResulActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_resul);
 
         // SDLサービスからのデータ受信
-        if(upReceiver == null)
-        {
-            upReceiver = new UpdateReceiver();
-            IntentFilter intentFilter = new IntentFilter();
-            intentFilter.addAction("UPDATE_ACTION");
-            registerReceiver(upReceiver, intentFilter);
-        }
+        upReceiver = new UpdateReceiver();
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction("UPDATE_ACTION");
+        registerReceiver(upReceiver, intentFilter);
     }
 
+
+    @Override
+    public void onDestroy(){
+        super.onDestroy();
+        unregisterReceiver(upReceiver);
+    }
 
     protected class UpdateReceiver extends BroadcastReceiver {
         @RequiresApi(api = Build.VERSION_CODES.O)

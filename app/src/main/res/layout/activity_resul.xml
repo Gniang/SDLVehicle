@@ -13,10 +13,10 @@
         android:background="@drawable/background_result"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintVertical_bias="1.0" />
 
     <ImageView
         android:id="@+id/imageView7"
@@ -32,28 +32,23 @@
         android:id="@+id/lbl"
         android:layout_width="200dp"
         android:layout_height="35dp"
-        android:layout_marginStart="240dp"
-        android:layout_marginTop="552dp"
+        android:layout_marginStart="248dp"
+        android:layout_marginBottom="128dp"
         android:text="999"
         android:textSize="30sp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/imageView9"
-        app:layout_constraintVertical_bias="0.02" />
+        app:layout_constraintStart_toStartOf="parent" />
 
     <TextView
         android:id="@+id/lbl3"
         android:layout_width="270dp"
         android:layout_height="64dp"
-        android:layout_marginStart="240dp"
-        android:layout_marginTop="440dp"
+        android:layout_marginStart="248dp"
+        android:layout_marginTop="416dp"
         android:text="50"
-        android:textAppearance="\"
         android:textSize="50sp"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.07" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/textView"

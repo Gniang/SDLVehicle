@@ -22,6 +22,7 @@ import com.smartdevicelink.managers.permission.PermissionElement
 import com.smartdevicelink.protocol.enums.FunctionID
 import com.smartdevicelink.proxy.RPCNotification
 import com.smartdevicelink.proxy.RPCResponse
+import com.smartdevicelink.proxy.constants.Names.request
 import com.smartdevicelink.proxy.rpc.DisplayCapabilities
 import com.smartdevicelink.proxy.rpc.GetVehicleData
 import com.smartdevicelink.proxy.rpc.GetVehicleDataResponse
@@ -46,6 +47,16 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.ArrayList
 import java.util.Vector
+
+//HTTP通信
+import okhttp3.FormBody;
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response;
+import org.json.JSONObject
 
 @RequiresApi(api = Build.VERSION_CODES.O)
 public class SdlService : Service() {
@@ -236,7 +247,8 @@ public class SdlService : Service() {
 
                                     // 画面表示
                                     val intent = Intent(serviceContext(), ResulActivity::class.java)
-                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    intent.flags = (Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                     application.startActivity(intent)
 
                                     sendBroadCast("json", Gson().toJson(resultData))
@@ -252,7 +264,13 @@ public class SdlService : Service() {
                                 Log.i(TAG, "Speed:$speed")
 
                                 CalcScore(speed);
+
+
+
                             }
+
+
+
 
                             sdlManager!!.screenManager.commit { success ->
                                 if (success) {
@@ -303,6 +321,30 @@ public class SdlService : Service() {
         }
     }
 
+
+	/**
+	 * JSON形式でPOSTしたい場合　
+	 * @param url
+	 * @param jsonString
+	 * @throws IOException
+	 */
+	fun doJsonPost( url :String, jsonString:String ) {
+        val mediaTypeJson = "application/json; charset=utf-8".toMediaTypeOrNull();
+
+        val requestBody = jsonString.toRequestBody(mediaTypeJson);
+		val request = Request.Builder()
+				.url(url)
+                .header("X-Cybozu-API-Token","1xUGbN3BixFjWi6mlwtEZz5zFvc8MEpYX3rjowbH")
+                .header("Content-Type", "Content-Type: application/json")
+				.post(requestBody)//POST指定
+				.build();
+		val client = OkHttpClient.Builder()
+				    .build();
+		//同期呼び出し
+		val response = client.newCall(request).execute();
+        Log.i(TAG, "Res:" + response.body?.string())
+	}
+
     private fun serviceContext():Context{
         return this;
     }
@@ -344,9 +386,36 @@ public class SdlService : Service() {
         Log.i(TAG, "BadStatus:$penalty    count:$badStsCount"  )
 
         // スコア設定
-        resultData.Scores.add((distanceMeter * penalty).toInt());
+        val point = (distanceMeter * penalty).toInt()
+        resultData.Scores.add(point);
         resultData.Times.add(newDate)
         prevDate = newDate
+
+        try{
+            var utcDate = newDate.plusHours(-9);
+            val date = String.format("%02d-%02d-%02dT%02d:%02d:%02dZ",
+                    utcDate.year,utcDate.monthValue,utcDate.dayOfMonth,utcDate.hour,utcDate.minute,utcDate.second);
+            val data =
+                """{
+                    "app": 5,
+                    "record": {
+                    "f_datetime": {
+                        "value": "$date"
+                        },
+                    "f_nekopo": {
+                        "value": "$point"
+                        },
+                    "f_memo": {
+                        "value": ""
+                        }
+                    }
+                }
+                """
+        doJsonPost("https://sdlhack2019neko.cybozu.com/k/v1/record.json?app=5&id=1",data)
+
+        }catch (e:Exception){
+            e.stackTrace
+        }
     }
 
     // ペナ付与
@@ -505,7 +574,7 @@ public class SdlService : Service() {
         // TCP/IP transport config
         // The default port is 12345
         // The IP is of the machine that is running SDL Core
-        private val TCP_PORT = 19597
+        private val TCP_PORT = 14989
         private val DEV_MACHINE_IP_ADDRESS = "m.sdl.tools"
 
         @JvmField val totalData:TotalData = TotalData()

@@ -361,7 +361,7 @@ public class SdlService : Service() {
 
 
             val headers :List<Pair<String,String>> = listOf(
-                    "X-Cybozu-API-Token" to "1xUGbN3BixFjWi6mlwtEZz5zFvc8MEpYX3rjowbH",
+                    "X-Cybozu-API-Token" to KINTONE_API_TOKEN,
                     "Content-Type" to "Content-Type: application/json"
             )
 
@@ -540,6 +540,7 @@ public class SdlService : Service() {
 
     public companion object {
 
+
         private val TAG = "SDL Service"
 
         private val APP_NAME = "SDL Display"
@@ -552,8 +553,12 @@ public class SdlService : Service() {
         // TCP/IP transport config
         // The default port is 12345
         // The IP is of the machine that is running SDL Core
+        // マンティコア起動セッションごとにポートは書き換え
         private val TCP_PORT = 14989
         private val DEV_MACHINE_IP_ADDRESS = "m.sdl.tools"
+
+        private val KINTONE_API_TOKEN = "xxxx<Slackからコピペして>"
+
 
         @JvmField val totalData:TotalData = TotalData()
 

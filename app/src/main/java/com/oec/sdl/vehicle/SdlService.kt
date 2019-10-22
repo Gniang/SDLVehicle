@@ -1,6 +1,7 @@
 package com.oec.sdl.vehicle
 
 import android.annotation.SuppressLint
+import android.annotation.TargetApi
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -11,7 +12,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
-import android.support.annotation.RequiresApi
 import android.util.Log
 
 import com.google.gson.Gson
@@ -22,7 +22,6 @@ import com.smartdevicelink.managers.permission.PermissionElement
 import com.smartdevicelink.protocol.enums.FunctionID
 import com.smartdevicelink.proxy.RPCNotification
 import com.smartdevicelink.proxy.RPCResponse
-import com.smartdevicelink.proxy.constants.Names.request
 import com.smartdevicelink.proxy.rpc.DisplayCapabilities
 import com.smartdevicelink.proxy.rpc.GetVehicleData
 import com.smartdevicelink.proxy.rpc.GetVehicleDataResponse
@@ -34,7 +33,6 @@ import com.smartdevicelink.proxy.rpc.enums.AppHMIType
 import com.smartdevicelink.proxy.rpc.enums.ElectronicParkBrakeStatus
 import com.smartdevicelink.proxy.rpc.enums.FileType
 import com.smartdevicelink.proxy.rpc.enums.HMILevel
-import com.smartdevicelink.proxy.rpc.enums.PRNDL
 import com.smartdevicelink.proxy.rpc.enums.SystemCapabilityType
 import com.smartdevicelink.proxy.rpc.listeners.OnRPCNotificationListener
 import com.smartdevicelink.proxy.rpc.listeners.OnRPCResponseListener
@@ -43,40 +41,17 @@ import com.smartdevicelink.transport.MultiplexTransportConfig
 import com.smartdevicelink.transport.TCPTransportConfig
 
 import java.time.Duration
-import java.time.LocalDate
 import java.time.LocalDateTime
-import java.util.ArrayList
-import java.util.Vector
 
 //HTTP通信
-import okhttp3.FormBody;
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import okhttp3.RequestBody;
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Response;
-import org.json.JSONObject
+import java.util.*
 
-@RequiresApi(api = Build.VERSION_CODES.O)
+@TargetApi(Build.VERSION_CODES.O)
 public class SdlService : Service() {
-
-    inner class PhoneUnlockedReceiver : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == Intent.ACTION_USER_PRESENT) {
-
-                // パーキングブレーキが入っていないときは操作を通知
-                if(parkBraak != ElectronicParkBrakeStatus.CLOSED){
-                    addPenalty(0.05, true)
-                    sendBroadCast("message", "unlock")
-                }
-                Log.i("debug", "Unlocked")
-
-            } else if (intent.action == Intent.ACTION_SCREEN_OFF) {
-                Log.d("debug", "Screen OFF")
-            }
-        }
-    }
 
     private lateinit var listener: SdlManagerListener
 
@@ -106,10 +81,11 @@ public class SdlService : Service() {
         }
 
         // ロック解除時
-        val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
-        filter.addAction(Intent.ACTION_USER_PRESENT)
-        registerReceiver(PhoneUnlockedReceiver(), filter)
-
+        run{
+            val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
+            filter.addAction(Intent.ACTION_USER_PRESENT)
+            registerReceiver(PhoneUnlockedReceiver(), filter)
+        }
     }
 
     // Helper method to let the service enter foreground mode
@@ -139,9 +115,7 @@ public class SdlService : Service() {
             stopForeground(true)
         }
 
-        if (sdlManager != null) {
-            sdlManager!!.dispose()
-        }
+        sdlManager?.dispose()
 
         super.onDestroy()
     }
@@ -179,19 +153,23 @@ public class SdlService : Service() {
             // The manager listener helps you know when certain events that pertain to the SDL Manager happen
             // Here we will listen for ON_HMI_STATUS and ON_COMMAND notifications
             val listener = object : SdlManagerListener {
-                private var beforePrndl: PRNDL? = null
+
+
+
                 override fun onStart() {
                     // HMI Status Listener
-                    sdlManager!!.addOnRPCNotificationListener(FunctionID.ON_HMI_STATUS, object : OnRPCNotificationListener() {
+                    sdlManager!!.addOnRPCNotificationListener(
+                            FunctionID.ON_HMI_STATUS,
+                            object : OnRPCNotificationListener()
+                    {
                         override fun onNotified(notification: RPCNotification) {
 
                             val status = notification as OnHMIStatus
-                            if (status.hmiLevel == HMILevel.HMI_FULL && notification.firstRun!!) {
+                            if (status.hmiLevel == HMILevel.HMI_FULL
+                                    && notification.firstRun!!) {
 
                                 checkTemplateType()
-
                                 checkPermission()
-
                                 setDisplayDefault()
                             }
                         }
@@ -204,41 +182,6 @@ public class SdlService : Service() {
 
                             sdlManager!!.screenManager.beginTransaction()
 
-                            var artwork: SdlArtwork? = null
-
-                            //回転数が3000以上か、以下で画像を切り替える
-                            val rpm = onVehicleDataNotification.rpm
-                            if (rpm != null) {
-                                if (rpm > 3000) {
-                                    if (sdlManager!!.screenManager.primaryGraphic.resourceId != R.drawable.oldman) {
-                                        artwork = SdlArtwork("oldman.png", FileType.GRAPHIC_PNG, R.drawable.oldman, true)
-                                    }
-                                } else {
-                                    if (sdlManager!!.screenManager.primaryGraphic.resourceId != R.drawable.oldman) {
-                                        artwork = SdlArtwork("clap.png", FileType.GRAPHIC_PNG, R.drawable.clap, true)
-                                    }
-                                }
-                                if (artwork != null) {
-                                    sdlManager!!.screenManager.primaryGraphic = artwork
-                                }
-                            }
-
-                            //テキストを登録する場合
-                            sdlManager!!.screenManager.textField1 = "RPM: " + onVehicleDataNotification.rpm
-
-
-                            val prndl = onVehicleDataNotification.prndl
-                            if (prndl != null) {
-                                sdlManager!!.screenManager.textField2 = "ParkBrake: $prndl"
-
-                                //パーキングブレーキの状態が変わった時だけSpeedを受信させる
-                                if (beforePrndl != prndl) {
-                                    beforePrndl = prndl
-                                    setOnTimeSpeedResponse()
-                                }
-                            }
-
-
                             // パーキングブレーキがはいると走行結果を画面に通達する。
                             val newPark = onVehicleDataNotification.electronicParkBrakeStatus
                             if(newPark != null){
@@ -246,13 +189,14 @@ public class SdlService : Service() {
                                 if (parkBraak != newPark && newPark == ElectronicParkBrakeStatus.CLOSED) {
 
                                     // 画面表示
-                                    val intent = Intent(serviceContext(), ResulActivity::class.java)
+                                    val intent = Intent(serviceContext(), ResultActivity::class.java)
                                     intent.flags = (Intent.FLAG_ACTIVITY_SINGLE_TOP)
                                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                     application.startActivity(intent)
 
+                                    // スコア通達
                                     sendBroadCast("json", Gson().toJson(resultData))
-                                    resultData = CreateNewResultData(resultData)
+                                    resultData = createNewResultData(resultData)
                                     Log.i(TAG, "sendResultScore")
                                 }
                                 parkBraak = newPark
@@ -262,15 +206,8 @@ public class SdlService : Service() {
                             var speed = onVehicleDataNotification.speed
                             if(speed != null){
                                 Log.i(TAG, "Speed:$speed")
-
-                                CalcScore(speed);
-
-
-
+                                calcScore(speed)
                             }
-
-
-
 
                             sdlManager!!.screenManager.commit { success ->
                                 if (success) {
@@ -316,51 +253,50 @@ public class SdlService : Service() {
             builder.setAppIcon(appIcon)
             sdlManager = builder.build()
             sdlManager!!.start()
-
-
         }
     }
 
 
 	/**
 	 * JSON形式でPOSTしたい場合　
-	 * @param url
-	 * @param jsonString
-	 * @throws IOException
 	 */
-	fun doJsonPost( url :String, jsonString:String ) {
+    private fun doJsonPost( url :String, jsonString:String, headers:List<Pair<String,String>> ) {
         val mediaTypeJson = "application/json; charset=utf-8".toMediaTypeOrNull();
 
         val requestBody = jsonString.toRequestBody(mediaTypeJson);
-		val request = Request.Builder()
+		val reqBuilder= Request.Builder()
+
+        // ヘッダ付与
+        headers.forEach { x -> reqBuilder.header(x.first, x.second)}
+        val request = reqBuilder
 				.url(url)
-                .header("X-Cybozu-API-Token","1xUGbN3BixFjWi6mlwtEZz5zFvc8MEpYX3rjowbH")
-                .header("Content-Type", "Content-Type: application/json")
 				.post(requestBody)//POST指定
-				.build();
-		val client = OkHttpClient.Builder()
-				    .build();
+                .build();
+
+        val client = OkHttpClient.Builder()
+				    .build()
 		//同期呼び出し
-		val response = client.newCall(request).execute();
+		val response = client.newCall(request).execute()
         Log.i(TAG, "Res:" + response.body?.string())
 	}
 
     private fun serviceContext():Context{
-        return this;
+        return this
     }
 
-    private fun CreateNewResultData(resultData: ResultData): ResultData {
+    private fun createNewResultData(resultData: ResultData): ResultData {
         val now = LocalDateTime.now();
         val newData = ResultData()
         // ペナの引継ぎ
         newData.BadStatus.addAll(
-                resultData.BadStatus.filter { x -> x.Start > now  }
+                resultData.BadStatus.filter { x -> x.start > now  }
         )
         return  newData
     }
 
     // ポイント計算
-    private fun CalcScore(speedKph:Double) {
+    @TargetApi(Build.VERSION_CODES.O)
+    private fun calcScore(speedKph:Double) {
         val newDate = LocalDateTime.now()
         val d = Duration.between(prevDate, newDate)
 
@@ -371,15 +307,15 @@ public class SdlService : Service() {
         // 乗算ペナルティ係数を求める
         val badStsCount = resultData.BadStatus
                 .stream()
-                .filter{x->x.Start > prevDate}
+                .filter{x->x.start > prevDate}
                 .count()
 
         var penalty = 1.0
         if(badStsCount > 0){
             penalty = resultData.BadStatus
                     .stream()
-                    .filter{x->x.Start > prevDate}
-                    .map { x -> x.Keisu}
+                    .filter{x->x.start > prevDate}
+                    .map { x -> x.keisu}
                     .reduce { x,y -> (x * y)}.get()
         }
 
@@ -391,16 +327,27 @@ public class SdlService : Service() {
         resultData.Times.add(newDate)
         prevDate = newDate
 
+        sendKintoneScore(newDate, point)
+    }
+
+
+    /**
+     * キントーンにスコア送信
+     */
+    @TargetApi(Build.VERSION_CODES.O)
+    private fun sendKintoneScore(date:LocalDateTime, point:Int) {
+
         try{
-            var utcDate = newDate.plusHours(-9);
-            val date = String.format("%02d-%02d-%02dT%02d:%02d:%02dZ",
-                    utcDate.year,utcDate.monthValue,utcDate.dayOfMonth,utcDate.hour,utcDate.minute,utcDate.second);
+            var utcDate = date.plusHours(-9);
+            val formatDate = String.format("%02d-%02d-%02dT%02d:%02d:%02dZ",
+                    utcDate.year,utcDate.monthValue,utcDate.dayOfMonth,
+                    utcDate.hour,utcDate.minute,utcDate.second);
             val data =
-                """{
+                    """{
                     "app": 5,
                     "record": {
                     "f_datetime": {
-                        "value": "$date"
+                        "value": "$formatDate"
                         },
                     "f_nekopo": {
                         "value": "$point"
@@ -411,34 +358,48 @@ public class SdlService : Service() {
                     }
                 }
                 """
-        doJsonPost("https://sdlhack2019neko.cybozu.com/k/v1/record.json?app=5&id=1",data)
+
+
+            val headers :List<Pair<String,String>> = listOf(
+                    "X-Cybozu-API-Token" to "1xUGbN3BixFjWi6mlwtEZz5zFvc8MEpYX3rjowbH",
+                    "Content-Type" to "Content-Type: application/json"
+            )
+
+            doJsonPost("https://sdlhack2019neko.cybozu.com/k/v1/record.json?app=5&id=1",
+                    data,
+                    headers)
 
         }catch (e:Exception){
             e.stackTrace
         }
     }
 
-    // ペナ付与
-    private fun addPenalty(penalty:Double, isFaital:Boolean) {
+    /**
+     * ペナ付与
+     */
+    private fun addPenalty(penalty:Double, isFatal:Boolean) {
 
         var last:LocalDateTime = LocalDateTime.now()
         var badStCnt = resultData.BadStatus
                 .stream()
-                .filter{x->x.IsFaital}
+                .filter{x->x.isFatal}
                 .count()
-        if(isFaital && badStCnt > 0){
+        if(isFatal && badStCnt > 0){
             last =  resultData.BadStatus
                     .stream()
-                    .filter{x->x.IsFaital}.map {x->x.Start  }
+                    .filter{x->x.isFatal}.map { x->x.start  }
                     .max{x,y-> x.compareTo(y) }.get();
         }
 
         resultData.BadStatus.add(
-                BadStatus(last.plusSeconds(penaltyTimeSec), penalty, isFaital)
+                BadStatus(last.plusSeconds(penaltyTimeSec), penalty, isFatal)
         )
     }
 
-    protected fun sendBroadCast(key: String, message: String) {
+    /**
+     * インテントでメッセージ送信
+     */
+    private fun sendBroadCast(key: String, message: String) {
         val broadcastIntent = Intent()
         broadcastIntent.putExtra(key, message)
         broadcastIntent.action = "UPDATE_ACTION"
@@ -534,7 +495,7 @@ public class SdlService : Service() {
         sdlManager!!.screenManager.textField3 = "Speed: None"
 
         //画像を登録する
-        val artwork = SdlArtwork("clap.png", FileType.GRAPHIC_PNG, R.drawable.clap, true)
+        val artwork = SdlArtwork("clap.png", FileType.GRAPHIC_PNG, R.drawable.goods_nekofood, true)
 
         sdlManager!!.screenManager.primaryGraphic = artwork
         sdlManager!!.screenManager.commit { success ->
@@ -556,6 +517,23 @@ public class SdlService : Service() {
                 }
                 sdlManager!!.sendRPC(subscribeRequest)
 
+            }
+        }
+    }
+
+    private inner class PhoneUnlockedReceiver : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == Intent.ACTION_USER_PRESENT) {
+
+                // パーキングブレーキが入っていないときは操作を通知
+                if(parkBraak != ElectronicParkBrakeStatus.CLOSED){
+                    addPenalty(0.05, true)
+                    sendBroadCast("message", "unlock")
+                }
+                Log.i("debug", "Unlocked")
+
+            } else if (intent.action == Intent.ACTION_SCREEN_OFF) {
+                Log.d("debug", "Screen OFF")
             }
         }
     }

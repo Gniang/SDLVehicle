@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.github.oupson:Kapng-Android:1.0.9@aar">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/transforms-2/files-2.1/2d8922eacad80e892526769a48b0a48d/Kapng-Android-1.0.9/jars/classes.jar!/" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-2/files-2.1/2d8922eacad80e892526769a48b0a48d/Kapng-Android-1.0.9/res" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.oupson/Kapng-Android/1.0.9/15f1446ad33bc4440962a08bbf23a3e20579ff74/Kapng-Android-1.0.9-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

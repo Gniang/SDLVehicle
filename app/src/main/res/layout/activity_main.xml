@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -11,8 +12,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:background="@drawable/background"
+        android:contentDescription="TODO"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.0" />
 
@@ -21,7 +24,7 @@
         android:layout_width="130dp"
         android:layout_height="45dp"
         android:layout_marginTop="8dp"
-        android:layout_marginEnd="16dp"
+        android:contentDescription="TODO"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/icon_sdllinked" />
@@ -34,7 +37,8 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@drawable/goods_nekobed" />
+        app:srcCompat="@drawable/goods_nekobed"
+        android:contentDescription="TODO" />
 
     <ImageView
         android:id="@+id/imageView5"
@@ -44,7 +48,8 @@
         android:layout_marginBottom="120dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:srcCompat="@drawable/goods_nekotower" />
+        app:srcCompat="@drawable/goods_nekotower"
+        android:contentDescription="TODO" />
 
     <ImageView
         android:id="@+id/imageView6"
@@ -54,7 +59,8 @@
         android:layout_marginBottom="120dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@drawable/goods_tsumetogi" />
+        app:srcCompat="@drawable/goods_tsumetogi"
+        android:contentDescription="TODO" />
 
     <Button
         android:id="@+id/btn"
@@ -96,7 +102,8 @@
         android:layout_marginStart="8dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/icon_nekopoint" />
+        app:srcCompat="@drawable/icon_nekopoint"
+        android:contentDescription="TODO" />
 
     <TextView
         android:id="@+id/lbl5"
@@ -110,14 +117,15 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <ImageView
-        android:id="@+id/imageView10"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="100dp"
-        android:layout_marginBottom="80dp"
+        android:id="@+id/cat"
+        android:layout_width="116dp"
+        android:layout_height="157dp"
+        android:layout_marginStart="72dp"
+        android:layout_marginBottom="84dp"
+        android:contentDescription="TODO"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@drawable/neko_sit_center" />
+        app:srcCompat="@drawable/transparent" />
 
     <ImageView
         android:id="@+id/imageView8"
@@ -125,6 +133,8 @@
         android:layout_height="42dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/imageView3"
-        app:srcCompat="@drawable/button_sns" />
+        app:srcCompat="@drawable/button_sns"
+        android:contentDescription="TODO" />
 
-</android.support.constraint.ConstraintLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
